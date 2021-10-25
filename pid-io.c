@@ -164,5 +164,6 @@ int io_get_output_value(io_type_e type, int adc_resolution, pid_handle_t *pid)
         io_range = 5;
         break;
     }
+    
     return 0;
 }

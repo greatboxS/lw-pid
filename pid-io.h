@@ -1,3 +1,13 @@
+/**
+ * @file pid-io.h
+ * @author greatboxs (https://github.com/greatboxs/lw-pid.git)
+ * @brief 
+ * @version 0.1
+ * @date 2021-10-25
+ * 
+ * @copyright Copyright (c) 2021
+ * 
+ */
 #ifndef __PID_IO_H__
 #define __PID_IO_H__
 
