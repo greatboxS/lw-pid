@@ -1,7 +1,5 @@
 #include "pid.h"
 #include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 /**
  * @brief create new pid handler structure
@@ -23,8 +21,7 @@ pid_handle_t *pid_create_new()
  */
 pid_result_t pid_init(pid_handle_t *pid, int pid_enable)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
 
     pid->parameter.enable_p = false;
     pid->parameter.enable_i = false;
@@ -54,8 +51,7 @@ pid_result_t pid_init(pid_handle_t *pid, int pid_enable)
  */
 pid_result_t pid_set_parameter(pid_handle_t *pid, pid_para_t *para)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     if (!para)
         return PID_ERROR;
 
@@ -68,14 +64,13 @@ pid_result_t pid_set_parameter(pid_handle_t *pid, pid_para_t *para)
  * @brief set control type for pid controller
  * 
  * @param pid 
- * @param control_type 
+ * @param ctrl_method 
  * @return pid_result_t function result
  */
-pid_result_t pid_set_control_type(pid_handle_t *pid, pid_control_type_e control_type)
+pid_result_t pid_set_control_method(pid_handle_t *pid, pid_output_ctrl_method_e ctrl_method)
 {
-    if (!pid)
-        return PID_ERROR;
-    pid->control.control_type = control_type;
+    PID_RETURN_IF_NULL(pid);
+    pid->control.output_ctrl_mt = ctrl_method;
     pid->err = PID_OK;
     return PID_OK;
 }
@@ -89,8 +84,7 @@ pid_result_t pid_set_control_type(pid_handle_t *pid, pid_control_type_e control_
  */
 pid_result_t pid_set_limit_h(pid_handle_t *pid, pid_limit_t *high)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     memcpy(&pid->control.out_limit_h, high, sizeof(pid_limit_t));
     pid->err = PID_OK;
     return PID_OK;
@@ -105,8 +99,7 @@ pid_result_t pid_set_limit_h(pid_handle_t *pid, pid_limit_t *high)
  */
 pid_result_t pid_set_limit_l(pid_handle_t *pid, pid_limit_t *low)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     memcpy(&pid->control.out_limit_l, low, sizeof(pid_limit_t));
     pid->err = PID_OK;
     return PID_OK;
@@ -121,8 +114,7 @@ pid_result_t pid_set_limit_l(pid_handle_t *pid, pid_limit_t *low)
  */
 pid_result_t pid_set_gain(pid_handle_t *pid, pid_gain_t *gain)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     memcpy(&pid->control.gain, gain, sizeof(pid_gain_t));
     pid->err = PID_OK;
     return PID_OK;
@@ -137,8 +129,7 @@ pid_result_t pid_set_gain(pid_handle_t *pid, pid_gain_t *gain)
  */
 pid_result_t pid_set_sv_value(pid_handle_t *pid, float sv)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     pid->control.sv = sv;
     pid->err = PID_OK;
     return PID_OK;
@@ -154,20 +145,9 @@ pid_result_t pid_set_sv_value(pid_handle_t *pid, float sv)
  */
 pid_result_t pid_set_pv_range(pid_handle_t *pid, float pv_max, float pv_min)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     pid->control.pv.max = pv_max;
     pid->control.pv.min = pv_min;
-
-    // set limitaion in percent mode
-    if (pid->control.control_type == PID_PERCENT_CONTROL)
-    {
-        if (pid->control.pv.max > MAX_OUT_PERCENT)
-            pid->control.pv.max = MAX_OUT_PERCENT;
-
-        if (pid->control.pv.min < 0)
-            pid->control.pv.min = 0;
-    }
     pid->err = PID_OK;
     return PID_OK;
 }
@@ -182,8 +162,7 @@ pid_result_t pid_set_pv_range(pid_handle_t *pid, float pv_max, float pv_min)
  */
 pid_result_t pid_set_output(pid_handle_t *pid, float output_max, float output_min)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     pid->control.output.max = output_max;
     pid->control.output.min = output_min;
     pid->err = PID_OK;
@@ -214,8 +193,7 @@ pid_result_t pid_configuration(pid_handle_t *pid)
    Ki = Kp/Ti
    Kd = Kp*Td;
 */
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
     pid->parameter.b0 = -pid->parameter.kp + pid->parameter.ki * pid->control.sample_time / 2.0 + 2.0 * pid->parameter.kd / pid->control.sample_time;
     pid->parameter.b1 = pid->parameter.kp * pid->control.sample_time - 4.0 * pid->parameter.kd / pid->control.sample_time;
     pid->parameter.b2 = pid->parameter.kp + pid->parameter.ki * pid->control.sample_time / 2.0 + 2.0 * pid->parameter.kd / pid->control.sample_time;
@@ -234,33 +212,16 @@ pid_result_t pid_configuration(pid_handle_t *pid)
 pid_result_t pid_on_processing(pid_handle_t *pid, float current_pv)
 {
     float pv_sub = 0, limit_sub = 0, h = 0, l = 0;
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
 
     pid->control.pv.value = current_pv;
-
-    if (pid->control.control_type == PID_FLOAT_CONTROL)
-    {
-    }
-    else if (pid->control.control_type == PID_PERCENT_CONTROL)
-    {
-        if (pid->control.out_limit_h.enable)
-            h = pid->control.out_limit_h.value;
-        else
-            h = MAX_OUT_PERCENT;
-
-        if (pid->control.out_limit_l.enable)
-            l = pid->control.out_limit_h.value;
-        else
-            l = MIN_OUT_PERCENT;
-    }
 
     pv_sub = pid->control.pv.max - pid->control.pv.min;
     limit_sub = h - l;
 
     if (pv_sub > 0 & limit_sub > 0)
     {
-        pid->control.pv.percent = pid->control.pv.value/ pv_sub; 
+        pid->control.pv.percent = pid->control.pv.value / pv_sub;
     }
     else
         return PID_ERROR;
@@ -276,13 +237,6 @@ pid_result_t pid_on_processing(pid_handle_t *pid, float current_pv)
      */
 
     // 1.
-    if (pid->control.control_type == PID_PERCENT_CONTROL)
-    {
-
-    }
-    else{
-        pid->control.err[0] = pid->control.sv - pid->control.pv.value;
-    }
 
     // 2.
     pid->control.cv[0] = pid->control.cv[2] + pid->parameter.b0 * pid->control.err[2] + pid->parameter.b1 * pid->control.err[1] + pid->parameter.b2 * pid->control.err[0];
@@ -318,25 +272,11 @@ pid_result_t pid_on_processing(pid_handle_t *pid, float current_pv)
 
 static pid_result_t pid_cal_output(pid_handle_t *pid)
 {
-    if (!pid)
-        return PID_ERROR;
+    PID_RETURN_IF_NULL(pid);
 
     float cv_max = 0;
     float cv_min = 0;
 
-    if (pid->control.control_type == PID_PERCENT_CONTROL)
-    {
-        if (pid->control.out_limit_h.enable)
-        {
-        }
-        else
-        {
-            cv_max = MAX_OUT_PERCENT;
-        }
-    }
-    else
-    {
-    }
     pid->err = PID_OK;
     return PID_OK;
 }

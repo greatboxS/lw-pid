@@ -18,8 +18,6 @@ extern "C"
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "pid-common.h"
-#include "pid-typedef.h"
 #include "pid-io.h"
 
     /**
@@ -51,10 +49,10 @@ extern "C"
      * @brief set control type for pid controller
      * 
      * @param pid 
-     * @param control_type 
+     * @param ctrl_method 
      * @return pid_result_t function result
      */
-    pid_result_t pid_set_control_type(pid_handle_t *pid, pid_control_type_e control_type);
+    pid_result_t pid_set_control_method(pid_handle_t *pid, pid_output_ctrl_method_e ctrl_method);
 
     /**
      * @brief set output high limitation for pid handler

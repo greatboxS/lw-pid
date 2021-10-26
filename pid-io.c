@@ -1,169 +1,132 @@
 #include "pid-io.h"
 
 /**
- * @brief get processing value from input pin
+ * @brief set the pv or output io properties
  * 
- * @param type              input type
- * @param adc_resolution    adc resolution, eg:15 bit
- * @param adc_value         adc value, read from input pin
- * @param pv_max            pv maximum value
- * @param pv_min            pv miximum value
- * @return float            processing value after scale
+ * @param io_prop           &pid->control.pv or &pid->control.output
  */
-float io_get_pv_value(io_type_e type, int adc_resolution, int adc_value, float pv_max, float pv_min)
+static void io_set_io_type(pid_io_property_t *io_prop)
 {
-    float io_range = 0.f;
-    float io_offset = 0.f;
-    float adc_range = 0.f;
-    float pv = 0.f;
-
-    if (adc_resolution == ADC_16IT)
-    {
-        adc_range = 32768;
-    }
-    else if (adc_resolution == ADC_12IT)
-    {
-        adc_range = 4096;
-    }
-    else
-    {
-        adc_range = 1024;
-    }
-
-    switch (type)
+    switch (io_prop->io.type)
     {
     case IO_0_5VDC:
-        io_offset = 0;
-        io_range = 5;
+        io_prop->io.offset = 0;
+        io_prop->io.range = 5;
         break;
 
     case IO_1_5VDC:
-        io_offset = 1;
-        io_range = 5;
+        io_prop->io.offset = 1;
+        io_prop->io.range = 5;
         break;
 
     case IO_0_10VDC:
-        io_offset = 0;
-        io_range = 10;
+        io_prop->io.offset = 0;
+        io_prop->io.range = 10;
         break;
 
     case IO_1_10VDC:
-        io_offset = 1;
-        io_range = 10;
+        io_prop->io.offset = 1;
+        io_prop->io.range = 10;
         break;
 
     case IO_0_20mA:
-        io_offset = 0;
-        io_range = 20;
+        io_prop->io.offset = 0;
+        io_prop->io.range = 20;
         break;
 
     case IO_4_20mA:
-        io_offset = 4;
-        io_range = 20;
+        io_prop->io.offset = 4;
+        io_prop->io.range = 20;
         break;
 
     case IO_0_24VDC:
-        io_offset = 0;
-        io_range = 24;
+        io_prop->io.offset = 0;
+        io_prop->io.range = 24;
         break;
 
     case IO_1_24VDC:
-        io_offset = 1;
-        io_range = 24;
+        io_prop->io.offset = 1;
+        io_prop->io.range = 24;
         break;
 
     default:
-        io_offset = 0;
-        io_range = 5;
+        io_prop->io.offset = 0;
+        io_prop->io.range = 5;
         break;
     }
+}
+
+/**
+ * @brief set pv input io type and adc resolution
+ * 
+ * @param pid               pid handler              
+ * @param type              io type
+ * @param adc_resolution    adc resolution  
+ * @return pid_result_t     error code
+ */
+pid_result_t io_set_pv_input(pid_handle_t *pid, io_type_e input_type, int adc_resolution)
+{
+    PID_RETURN_IF_NULL(pid);
+    pid->control.pv.io_type = input_type;
+    pid->control.pv.adc.resolution = adc_resolution;
+    io_set_io_type(&pid->control.pv);
+    return PID_OK;
+}
+
+/**
+ * @brief set cv output io type and adc resolution
+ * 
+ * @param pid               pid handler              
+ * @param type              io type
+ * @param adc_resolution    adc resolution  
+ * @return pid_result_t     error code
+ */
+pid_result_t io_set_cv_output(pid_handle_t *pid, io_type_e output_type, int adc_resolution)
+{
+    PID_RETURN_IF_NULL(pid);
+    pid->control.output.io.type = output_type;
+    pid->control.output.adc.resolution = adc_resolution;
+    io_set_io_type(&pid->control.output);
+    return PID_OK;
+}
+
+/**
+ * @brief get processing value from input pin
+ * the result will be store in pid->pv.value
+ * 
+ * @param pid               pid handler
+ * @param adc_resolution    adc resolution, eg:15 bit
+ * @param adc_value         adc value, read from input pin
+ * @return pid_result_t     error code
+ */
+pid_result_t io_get_pv_value(pid_handle_t *pid, int adc_value)
+{
+    PID_RETURN_IF_NULL(pid);
+    float io_sub = pid->control.pv.io.range - pid->control.pv.io.offset;
 
     // get the pv in voltage or current
     // eg: [0 - 5V] <=> [0 - 32767] => 2V <=> 13,107 (ADC 16bit value)
-    pv = (io_range - io_offset) * (adc_value / adc_range) + io_offset;
+    pid->control.pv.value = io_sub * (adc_value / pid->control.pv.adc.resolution) + pid->control.pv.io.offset;
 
     // get the final pv value
     // eg: [0 - 5V] <=> [0 - 1000] rpm => 2V <=> 400 rpm
-    pv = (pv_max - pv_min) * pv / (io_range - io_offset) + pv_min;
+    pid->control.pv.value = (pid->control.pv.max - pid->control.pv.min) * pid->control.pv.value / io_sub + pid->control.pv.min;
 
-    return pv;
+    pid->err = PID_OK;
+    return PID_OK;
 }
 
 /**
  * @brief convert control value of pid controller to output value
+ * the output value will be store in pid->output.adc.value
  * 
- * @param type              output type
- * @param adc_resolution    adc resolution, eg: 15 bits
- * @param pid               pid which contains the control value
- * @return int              output value (dac value)
+ * @param pid               pid handler
+ * @return pid_result_t     error code
  */
-int io_get_output_value(io_type_e type, int adc_resolution, pid_handle_t *pid)
+pid_result_t io_get_output_value(pid_handle_t *pid)
 {
-    float io_range = 0.f;
-    float io_offset = 0.f;
-    float adc_range = 0.f;
-    float output_result = 0.f;
-
-    if (adc_resolution == ADC_16IT)
-    {
-        adc_range = 32768;
-    }
-    else if (adc_resolution == ADC_12IT)
-    {
-        adc_range = 4096;
-    }
-    else
-    {
-        adc_range = 1024;
-    }
-
-    switch (type)
-    {
-    case IO_0_5VDC:
-        io_offset = 0;
-        io_range = 5;
-        break;
-
-    case IO_1_5VDC:
-        io_offset = 1;
-        io_range = 5;
-        break;
-
-    case IO_0_10VDC:
-        io_offset = 0;
-        io_range = 10;
-        break;
-
-    case IO_1_10VDC:
-        io_offset = 1;
-        io_range = 10;
-        break;
-
-    case IO_0_20mA:
-        io_offset = 0;
-        io_range = 20;
-        break;
-
-    case IO_4_20mA:
-        io_offset = 4;
-        io_range = 20;
-        break;
-
-    case IO_0_24VDC:
-        io_offset = 0;
-        io_range = 24;
-        break;
-
-    case IO_1_24VDC:
-        io_offset = 1;
-        io_range = 24;
-        break;
-
-    default:
-        io_offset = 0;
-        io_range = 5;
-        break;
-    }
-    
-    return 0;
+    PID_RETURN_IF_NULL(pid);
+    float io_sub = pid->control.output.io.range - pid->control.output.io.offset;
+    pid->err = PID_OK;
+    return PID_OK;
 }

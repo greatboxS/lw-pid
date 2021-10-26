@@ -19,7 +19,25 @@ extern "C"
 #include <stdbool.h>
 #include "pid-common.h"
 
+#define PID_CV_MAX_VALUE 1100U
+#define PID_CV_MIN_VALUE 0
+
 #define PID_ERR_BUFF_SIZE (3U)
+
+    typedef enum _pid_output_ctrl_method_e
+    {
+        /**
+         * @brief Normal control. The output control signal always be a positive 
+         * signal
+         */
+        PID_METHOD_POSITIVE = 0,
+        /**
+         * @brief This method is used for potition control or drirection control
+         * Control value can be nagative, and the positive or nagative indicates 
+         * the direction of the output control signal
+         */
+        PID_METHOD_BIO,
+    } pid_output_ctrl_method_e;
 
     typedef struct _pid_para_t
     {
@@ -46,6 +64,34 @@ extern "C"
     typedef pid_control_property_t pid_limit_t;
     typedef pid_control_property_t pid_gain_t;
 
+    typedef struct _pid_io_property_t
+    {
+        float max;
+        float min;
+        float value;
+        float percent;
+
+        /**
+         * @brief The io is the input or output
+         * eg: 0 - 5V DC, range = 5, offset = 0, type = IO_0_5VDC
+         */
+        struct io_t
+        {
+            io_type_e type;
+            float range;
+            float offset;
+        } io;
+
+        struct adc_t
+        {
+            float value;
+            int32_t resolution;
+        } adc;
+    } pid_io_property_t;
+
+    typedef pid_io_property_t pv_t;
+    typedef pid_io_property_t output_t;
+
     typedef struct _pid_control_t
     {
         float sv;                     // set value
@@ -54,42 +100,32 @@ extern "C"
         float sample_time;            // sample time
 
         /**
-     * @brief pid process value
-     * @param max pv maximum value, eg: motor speed max 1000 rpm
-     * @param min pv maximum value, eg: motor speed min 0 rpm
-     * @param value current pv value, eg: the value within [min; max] range
-     */
-        struct pv_t
-        {
-            float max;
-            float min;
-            float value;
-            float percent;
-        } pv;
+         * @brief pid process value
+         * @param max pv maximum value, eg: motor speed max 1000 rpm
+         * @param min pv maximum value, eg: motor speed min 0 rpm
+         * @param value current pv value, eg: the value within [min; max] range
+         */
+        pv_t pv;
 
         /**
-     * @brief pid controller output
-     * @param max output maximum value eg: 4-20 mA (max  = 20)
-     * @param min output miximum value
-     * @param value output current control value of pid
-     */
-        struct output_t
-        {
-            float max;
-            float min;
-            float value;
-        } output;
+         * @brief pid controller output
+         * @param max output maximum value eg: 4-20 mA (max  = 20)
+         * @param min output miximum value
+         * @param value output current control value of pid
+         */
+        output_t output;
 
-        pid_limit_t out_limit_h;         // high limitation value
-        pid_limit_t out_limit_l;         // low limitation value
-        pid_gain_t gain;                 // gain value affter calculation
-        pid_control_type_e control_type; // indicating what type of controller is
+        pid_limit_t out_limit_h;                 // high limitation value
+        pid_limit_t out_limit_l;                 // low limitation value
+        pid_gain_t gain;                         // gain value affter calculation
+        pid_output_ctrl_method_e output_ctrl_mt; // control method
     } pid_control_t;
 
     typedef struct _pid_handle_t
     {
         pid_para_t parameter;
         pid_control_t control;
+        pid_init_flag_e flag; // indicating the pid init state
         pid_result_t err;
     } pid_handle_t;
 
