@@ -19,7 +19,7 @@ extern "C"
 #include <stdint.h>
 #include <stdbool.h>
 #include "pid-io.h"
-
+#include "pid-eeprom.h"
     /**
      * @brief create new pid handler structure
      * 
@@ -34,7 +34,7 @@ extern "C"
      * @param pid_enable    pid enable variable eg: (PID_ENABLE_P | PID_ENABLE_I) for enable PI controller
      * @return pid_result_t function result
      */
-    pid_result_t pid_init(pid_handle_t *pid, int pid_enable);
+    pid_result_t pid_set_pid_type(pid_handle_t *pid, int pid_enable);
 
     /**
      * @brief set parameter value to pid handler
@@ -46,13 +46,22 @@ extern "C"
     pid_result_t pid_set_parameter(pid_handle_t *pid, pid_para_t *para);
 
     /**
+     * @brief set auto / manual mode
+     * 
+     * @param pid 
+     * @param mode          PID_MANUAL_MODE / PID_AUTO_MODE
+     * @return pid_result_t 
+     */
+    pid_result_t pid_set_operation_mode(pid_handle_t* pid, pid_operation_mode_e mode);
+
+    /**
      * @brief set control type for pid controller
      * 
      * @param pid 
-     * @param ctrl_method 
+     * @param ctrl_method   PID_METHOD_POSITIVE / PID_METHOD_BIO 
      * @return pid_result_t function result
      */
-    pid_result_t pid_set_control_method(pid_handle_t *pid, pid_output_ctrl_method_e ctrl_method);
+    pid_result_t pid_set_output_ctrl_method(pid_handle_t *pid, pid_output_ctrl_method_e ctrl_method);
 
     /**
      * @brief set output high limitation for pid handler
@@ -61,7 +70,7 @@ extern "C"
      * @param high 
      * @return pid_result_t function result
      */
-    pid_result_t pid_set_limit_h(pid_handle_t *pid, pid_limit_t *high);
+    pid_result_t pid_set_cv_limit_h(pid_handle_t *pid, pid_limit_t *high);
 
     /**
      * @brief set output low limitation for pid handler
@@ -70,7 +79,7 @@ extern "C"
      * @param low 
      * @return pid_result_t function result
      */
-    pid_result_t pid_set_limit_l(pid_handle_t *pid, pid_limit_t *low);
+    pid_result_t pid_set_cv_limit_l(pid_handle_t *pid, pid_limit_t *low);
 
     /**
      * @brief set output gain for pid controller
@@ -94,21 +103,21 @@ extern "C"
      * @brief set pv max and min value
      * 
      * @param pid 
-     * @param pv_max 
-     * @param pv_min 
+     * @param pv_max        set the maximum of object to be controled, eg: 1000 rpm
+     * @param pv_min        set the minimum of object to be controled, eg: 0 rpm
      * @return pid_result_t 
      */
     pid_result_t pid_set_pv_range(pid_handle_t *pid, float pv_max, float pv_min);
 
     /**
-     * @brief set output value, this control value use for output scale value
+     * @brief set cv max, min value, this control value use for output scale value
      * 
      * @param pid 
-     * @param output_max    maximum output control value, eg: (4-20 mA) => max = 20
-     * @param output_min    minimum output control value, eg: min = 4
+     * @param max    maximum result of pid equation 
+     * @param min    minimum result of pid equation 
      * @return pid_result_t 
      */
-    pid_result_t pid_set_output(pid_handle_t *pid, float output_max, float output_min);
+    pid_result_t pid_set_cv_max_min(pid_handle_t *pid, float max, float min);
 
     /**
      * @brief configuration pid handler, run this function after setting all 
@@ -117,7 +126,7 @@ extern "C"
      * @param pid 
      * @return pid_result_t 
      */
-    pid_result_t pid_configuration(pid_handle_t *pid);
+    pid_result_t pid_extend_param_cal(pid_handle_t *pid);
 
     /**
      * @brief   on processing function
@@ -128,6 +137,14 @@ extern "C"
      * @return pid_result_t function result
      */
     pid_result_t pid_on_processing(pid_handle_t *pid, float current_pv);
+
+    /**
+     * @brief create default pid instance
+     * 
+     * @param pid           pointer to pid pointer
+     * @return pid_result_t 
+     */
+    pid_result_t pid_create_new_default(pid_handle_t **pid);
 
 #ifdef __cplusplus
 }

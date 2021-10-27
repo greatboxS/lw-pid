@@ -18,6 +18,7 @@ extern "C"
 
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define USE_DEBUG
 
@@ -33,8 +34,12 @@ extern "C"
 
 #define MAX_OUT_PERCENT 110.0F
 #define MIN_OUT_PERCENT 0.0F
-#define DEFAULT_KP 10.0F
-#define DEFAULT_KI 0.1F
+#define PID_DEFAULT_KP 10.0F
+#define PID_DEFAULT_KI 0.1F
+#define PID_DEFAULT_MAX_CV 11000.0F
+#define PID_DEFAULT_MIN_CV 0.F
+#define PID_DEFAULT_GAIN 1.0F
+#define PID_BASE_EEPROM_ADDRESS 0x00
 
 #define PID_ENABLE_P (0x01U)
 #define PID_ENABLE_I (0x02U)
@@ -54,13 +59,18 @@ extern "C"
     typedef enum _pid_init_flag_e
     {
         PID_CREATED = 0,
-        PID_INIT_PV_INPUT = 0x01,
-        PID_INIT_CV_OUTPUT = 0x02,
-        PID_INIT_LIMIT = 0x04,
-        PID_INIT_GAIN = 0x08,
-        PID_INIT_PARA = 0x10,
-        PID_INIT_Bx = 0x20,
+        PID_INIT_TYPE = 0x01,
+        PID_INIT_PV_MIN_MAX = 0x02,
+        PID_INIT_CV_MIN_MAX = 0x04,
+        PID_INIT_CV_IO = 0x08,
+        PID_INIT_PV_IO = 0x10,
+        PID_INIT_PARA = 0x20,
+        PID_INIT_Bx = 0x40,
+        PID_INIT_OUTPUT_CTRL = 0x80,
     } pid_init_flag_e;
+
+#define PID_INIT_ALL ((uint32_t)(PID_INIT_TYPE | PID_INIT_PV_MIN_MAX | PID_INIT_CV_MIN_MAX | PID_INIT_CV_IO | \
+                                 PID_INIT_PV_IO | PID_INIT_CV_IO | PID_INIT_PARA | PID_INIT_Bx | PID_INIT_OUTPUT_CTRL))
 /**
  * @brief pid-io definition 
  * 
@@ -82,7 +92,7 @@ extern "C"
     } io_type_e;
 
 #define PID_RETURN_IF_NULL(x)                    \
-    if (!x)                                      \
+    if (x == NULL)                                      \
     {                                            \
         PID_LOG("NULL variable is detected.\n"); \
         return PID_ERROR;                        \

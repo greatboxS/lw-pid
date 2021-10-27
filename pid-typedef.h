@@ -19,8 +19,9 @@ extern "C"
 #include <stdbool.h>
 #include "pid-common.h"
 
-#define PID_CV_MAX_VALUE 1100U
+#define PID_CV_MAX_POS_VALUE 1100U
 #define PID_CV_MIN_VALUE 0
+#define PID_CV_MAX_NAG_VALUE (-1100)
 
 #define PID_ERR_BUFF_SIZE (3U)
 
@@ -38,6 +39,18 @@ extern "C"
          */
         PID_METHOD_BIO,
     } pid_output_ctrl_method_e;
+
+    typedef enum _pid_operation_mode_e
+    {
+        PID_MANUAL_MODE = 0,
+        PID_AUTO_MODE,
+    } pid_operation_mode_e;
+
+    typedef enum _pid_operation_phase_e
+    {
+        PID_RUNING_PHASE = 0,
+        PID_AUTO_TUNING_PHASE
+    } pid_operation_phase;
 
     typedef struct _pid_para_t
     {
@@ -90,12 +103,11 @@ extern "C"
     } pid_io_property_t;
 
     typedef pid_io_property_t pv_t;
-    typedef pid_io_property_t output_t;
+    typedef pid_io_property_t cv_output_t;
 
     typedef struct _pid_control_t
     {
         float sv;                     // set value
-        float cv[PID_ERR_BUFF_SIZE];  // control value/ MV of pid controller (affter calculation, not scaled yet)
         float err[PID_ERR_BUFF_SIZE]; // difference between pv and sv; (err = pv - sv)
         float sample_time;            // sample time
 
@@ -113,19 +125,28 @@ extern "C"
          * @param min output miximum value
          * @param value output current control value of pid
          */
-        output_t output;
+        cv_output_t cv_output;
 
-        pid_limit_t out_limit_h;                 // high limitation value
-        pid_limit_t out_limit_l;                 // low limitation value
-        pid_gain_t gain;                         // gain value affter calculation
-        pid_output_ctrl_method_e output_ctrl_mt; // control method
+        struct cv_t
+        {
+            float max;                               // the maximum value of pid calculation (raw output of calculation)
+            float min;                               // the minimum value of pid calculation
+            float buff[PID_ERR_BUFF_SIZE];           // control value/ MV of pid controller (affter calculation, not scaled yet)
+            pid_output_ctrl_method_e output_ctrl_mt; // control method
+            pid_limit_t high_limit;                  // high limitation value   (in percent %)
+            pid_limit_t low_limit;                   // low limitation value    (in percent %)
+            pid_gain_t gain;                         // gain value affter calculation
+        } cv;
+
+        pid_operation_mode_e operation_mode; // pid operation mode / manual / auto mode
     } pid_control_t;
 
     typedef struct _pid_handle_t
     {
         pid_para_t parameter;
         pid_control_t control;
-        pid_init_flag_e flag; // indicating the pid init state
+        pid_init_flag_e flag;                // indicating the pid init state
+        pid_operation_phase operation_phase; // indicating the phase of pid controller
         pid_result_t err;
     } pid_handle_t;
 

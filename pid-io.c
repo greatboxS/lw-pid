@@ -3,7 +3,7 @@
 /**
  * @brief set the pv or output io properties
  * 
- * @param io_prop           &pid->control.pv or &pid->control.output
+ * @param io_prop           &pid->control.pv or &pid->control.cv_output
  */
 static void io_set_io_type(pid_io_property_t *io_prop)
 {
@@ -67,7 +67,7 @@ static void io_set_io_type(pid_io_property_t *io_prop)
 pid_result_t io_set_pv_input(pid_handle_t *pid, io_type_e input_type, int adc_resolution)
 {
     PID_RETURN_IF_NULL(pid);
-    pid->control.pv.io_type = input_type;
+    pid->control.pv.io.type = input_type;
     pid->control.pv.adc.resolution = adc_resolution;
     io_set_io_type(&pid->control.pv);
     return PID_OK;
@@ -84,9 +84,9 @@ pid_result_t io_set_pv_input(pid_handle_t *pid, io_type_e input_type, int adc_re
 pid_result_t io_set_cv_output(pid_handle_t *pid, io_type_e output_type, int adc_resolution)
 {
     PID_RETURN_IF_NULL(pid);
-    pid->control.output.io.type = output_type;
-    pid->control.output.adc.resolution = adc_resolution;
-    io_set_io_type(&pid->control.output);
+    pid->control.cv_output.io.type = output_type;
+    pid->control.cv_output.adc.resolution = adc_resolution;
+    io_set_io_type(&pid->control.cv_output);
     return PID_OK;
 }
 
@@ -126,7 +126,7 @@ pid_result_t io_get_pv_value(pid_handle_t *pid, int adc_value)
 pid_result_t io_get_output_value(pid_handle_t *pid)
 {
     PID_RETURN_IF_NULL(pid);
-    float io_sub = pid->control.output.io.range - pid->control.output.io.offset;
+    float io_sub = pid->control.cv_output.io.range - pid->control.cv_output.io.offset;
     pid->err = PID_OK;
     return PID_OK;
 }
